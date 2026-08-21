@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"memorialstation/domain"
 	"memorialstation/storage"
+	"sort"
 )
 
 type Service struct{ store *storage.Store }
@@ -43,6 +44,9 @@ func (s *Service) ReadBack(batchID, actor string) ([]*domain.Record, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Preserve insertion order so that repeated readback of the same batch
+	// yields a stable, identical view rather than a map-driven permutation.
+	sort.Slice(entries, func(i, j int) bool { return entries[i].RecordID < entries[j].RecordID })
 	result := make([]*domain.Record, 0, len(entries))
 	for _, entry := range entries {
 		record, getErr := s.store.GetRecord(entry.RecordID)
@@ -52,7 +56,16 @@ func (s *Service) ReadBack(batchID, actor string) ([]*domain.Record, error) {
 			return nil, getErr
 		}
 		if record == nil {
-			record = &domain.Record{ID: entry.RecordID, BatchID: entry.BatchID, Status: domain.StatusDraft, Editor: actor}
+			// The live record was deleted after archiving. Restore the real
+			// business result that the confirmed archive snapshot captured at
+			// archive time, instead of fabricating a fresh draft state. This
+			// keeps readback consistent with the archived business record so a
+			// repeated archive/readback cycle cannot drift into a wrong state.
+			record, err = entry.Restore()
+			if err != nil {
+				return nil, err
+			}
+			record.Editor = actor
 		}
 		result = append(result, record)
 	}

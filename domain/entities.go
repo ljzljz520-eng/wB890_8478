@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -255,4 +256,20 @@ func (e *ArchiveEntry) Validate() error {
 		return ErrInvalidInput
 	}
 	return nil
+}
+
+// Restore reconstructs the business record that was frozen at archive time.
+// When the live record has since been deleted, readback must surface the real
+// archived result rather than fabricating a draft state, so repeated
+// archive/readback cycles never drift away from the confirmed business
+// record.
+func (e *ArchiveEntry) Restore() (*Record, error) {
+	if e == nil || e.Snapshot == "" {
+		return nil, ErrInvalidInput
+	}
+	var record Record
+	if err := json.Unmarshal([]byte(e.Snapshot), &record); err != nil {
+		return nil, fmt.Errorf("%w: decode archive snapshot: %v", ErrInvalidInput, err)
+	}
+	return &record, nil
 }
