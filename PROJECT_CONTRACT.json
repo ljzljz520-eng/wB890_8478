@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "metrics": {
+    "production_loc": 2367,
+    "production_files": 29,
+    "production_packages": 9,
+    "test_files": 10,
+    "production_functions": 154,
+    "decision_points": 386
+  },
+  "persistence": {
+    "module": "go.etcd.io/bbolt",
+    "entities": [
+      "Record",
+      "AuditEvent",
+      "Workflow",
+      "Attachment"
+    ],
+    "reopen_test": "TestPersistenceSurvivesReopen"
+  },
+  "workflows": [
+    {
+      "steps": [
+        "登记纪念资料",
+        "审核内容与附件",
+        "确认公开状态",
+        "归档并回看"
+      ],
+      "test": "TestWorkflowCreateReviewArchive"
+    },
+    {
+      "steps": [
+        "按班次查询",
+        "选择资料记录",
+        "更新展示范围",
+        "发布到纪念站"
+      ],
+      "test": "TestWorkflowSearchUpdatePublish"
+    },
+    {
+      "steps": [
+        "导入CSV资料",
+        "校验字段与标签",
+        "持久化有效记录",
+        "生成批次报告"
+      ],
+      "test": "TestWorkflowImportReport"
+    }
+  ]
+}
